@@ -1,0 +1,71 @@
+template:
+
+  # ==========================================================
+  # Example — Self-parameterized temperature sensors
+  # Debug variant with explanatory attributes
+  # ==========================================================
+
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.temperature_bedroom_1
+          - sensor.temperature_bedroom_2
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: "Temperature Bedroom"
+        unique_id: temperature_bedroom
+        device_class: temperature
+        unit_of_measurement: "°C"
+
+        state: &temperature_logic_debug >
+          {% set room = this.entity_id | replace('sensor.temperature_', '') %}
+
+          {% set src_main = 'sensor.temperature_' ~ room ~ '_1' %}
+          {% set src_fallback = 'sensor.temperature_' ~ room ~ '_2' %}
+
+          {% set value_main = states(src_main) | float(none) %}
+          {% set value_fallback = states(src_fallback) | float(none) %}
+          {% set value_last = this.state | float(none) %}
+
+          {% set chosen =
+            value_main
+            if value_main is not none
+            else value_fallback
+            if value_fallback is not none
+            else value_last
+          %}
+
+          {{ chosen | round(1) if chosen is not none else none }}
+
+        attributes:
+          # ----------------------------------------------------
+          # Debug attributes to show how the template resolved
+          # its dependencies
+          # ----------------------------------------------------
+          room: >
+            {{ this.entity_id | replace('sensor.temperature_', '') }}
+
+          source_main: >
+            {% set room = this.entity_id | replace('sensor.temperature_', '') %}
+            {{ 'sensor.temperature_' ~ room ~ '_1' }}
+
+          source_fallback: >
+            {% set room = this.entity_id | replace('sensor.temperature_', '') %}
+            {{ 'sensor.temperature_' ~ room ~ '_2' }}
+
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.temperature_living_room_1
+          - sensor.temperature_living_room_2
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: "Temperature Living Room"
+        unique_id: temperature_living_room
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: *temperature_logic_debug
