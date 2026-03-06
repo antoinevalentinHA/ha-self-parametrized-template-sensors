@@ -105,7 +105,9 @@ sensor.temperature_<room>     (consolidated output)
       state: *temperature_logic
 ```
 
-The logic is written **once**. The YAML anchor (`&temperature_logic`) stores the template, and `*temperature_logic` reuses it for every additional sensor. Every additional room is three lines of trigger + anchor reference.
+See the full working example in `examples/temperature_consolidation.yaml`.
+
+The logic is written **once**. The YAML anchor (`&temperature_logic`) stores the template, and `*temperature_logic` reuses it for every additional sensor.
 
 ---
 
