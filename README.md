@@ -1,14 +1,19 @@
-# Home Assistant — Self-Parametrized Template Sensors
+# Home Assistant — Self-Parameterized Template Sensors
+
+> A Home Assistant YAML pattern for building self-parameterized template sensors using `this.entity_id` introspection and naming conventions.
 
 A pattern for Home Assistant showing how to **write a template sensor once and reuse it across many entities** without duplicating logic.
 
 A common problem in Home Assistant configurations is repeating the same template logic for multiple rooms or devices. This pattern shows how to write the logic once and reuse it safely across many entities.
 
-The pattern combines:
+The core idea is **self-parameterized template sensors**.
 
-- **YAML anchors** — reuse the same template logic
-- **`this.entity_id` introspection** — derive source sensors dynamically
-- **strict naming conventions**
+This pattern relies on:
+
+- **`this.entity_id` introspection** — derive source sensors dynamically from the entity name
+- **strict naming conventions** — encode relationships directly in entity names
+
+YAML anchors are an optional convenience tool to avoid duplicating the template logic across sensors.
 
 This allows a template sensor to **configure itself from its own entity name**.
 
@@ -31,21 +36,109 @@ When the logic becomes more complex (fallbacks, validation, attributes), duplica
 
 ---
 
+## Why This Pattern Exists
+
+Many Home Assistant configurations evolve organically and accumulate large amounts of duplicated template logic. When the same calculation is repeated across multiple rooms or devices, small fixes must be applied everywhere — and inconsistencies appear over time.
+
+Self-parameterized template sensors solve this by turning entity naming into configuration, allowing one template to scale across many entities without modification.
+
+---
+
 ## The Pattern
 
-Instead of duplicating the logic:
+The goal of this pattern is to write **self-parameterized template sensors**.
 
-1. Write the logic **once**
-2. Reuse it with a **YAML anchor**
-3. Derive source sensors **from the entity name**
+Instead of hardcoding source entities inside the template, the sensor derives them from its own `entity_id`. This allows a single template to be reused across an entire family of entities without modification.
 
-Expected naming structure:
+This approach works best with **trigger-based template sensors**, where the template runs when the relevant source entities update.
+
+In short:
+
+> entity name → determines dependencies → runs generic logic
+
+This effectively turns the entity naming convention into configuration.
+
+### Pattern overview
 
 ```
-sensor.temperature_<room>      ← consolidated sensor
-sensor.temperature_<room>_1    ← main source
-sensor.temperature_<room>_2    ← fallback source
+sensor.temperature_bedroom
+            │
+            ▼
+sensor.temperature_bedroom_level
+            │
+            ▼
+template derives dependency automatically
+            │
+            ▼
+classification logic runs — same template, any room
 ```
+
+### Minimal example
+
+```yaml
+sensor:
+  - name: temperature_bedroom_level
+    state: &level_logic >
+      {% set room = this.entity_id
+           | replace('sensor.temperature_', '')
+           | replace('_level', '') %}
+      {% set t = states('sensor.temperature_' ~ room) | float(none) %}
+      {{ 'cold' if t < 18 else 'ok' if t < 24 else 'warm' if t < 27 else 'hot' }}
+
+  - name: temperature_living_room_level
+    state: *level_logic
+```
+
+Two sensors. One template. Zero duplication.
+
+> For simplicity this example shows only the sensor block. In practice this logic would typically live inside a trigger-based template sensor under `template:`.
+
+### Conceptual example
+
+Suppose we define the following naming convention:
+
+```
+sensor.temperature_<room>        ← source
+sensor.temperature_<room>_level  ← derived sensor
+```
+
+The `*_level` sensor classifies the temperature of its corresponding room. Instead of writing one template per room:
+
+```
+sensor.temperature_bedroom_level
+sensor.temperature_living_room_level
+sensor.temperature_office_level
+```
+
+the template derives the source entity automatically:
+
+```jinja2
+{% set room = this.entity_id | replace('sensor.temperature_', '') | replace('_level', '') %}
+{% set t = states('sensor.temperature_' ~ room) | float(none) %}
+
+{% if t is none %}    unknown
+{% elif t < 18 %}     cold
+{% elif t < 24 %}     ok
+{% elif t < 27 %}     warm
+{% else %}            hot
+{% endif %}
+```
+
+The logic is written once, and reused across every room. A YAML anchor stores the template — each additional sensor is just a trigger block referencing it.
+
+---
+
+## Where This Pattern Is Useful
+
+Any repeated template logic that follows a consistent naming structure:
+
+- Temperature or humidity classification per room
+- CO₂ air quality status per room
+- Comfort level derived from a source sensor
+- Device diagnostics or availability state
+- Power level classification per device
+
+One anchor, any number of rooms or devices.
 
 ---
 
@@ -105,9 +198,7 @@ sensor.temperature_<room>     (consolidated output)
       state: *temperature_logic
 ```
 
-See the full example in [examples/temperature_consolidation.yaml](examples/temperature_consolidation.yaml).
-
-The logic is written **once**. The YAML anchor (`&temperature_logic`) stores the template, and `*temperature_logic` reuses it for every additional sensor.
+The logic is written **once**. The YAML anchor (`&temperature_logic`) stores the template, and `*temperature_logic` reuses it for every additional sensor. Every additional room is three lines of trigger + anchor reference.
 
 ---
 
@@ -122,7 +213,7 @@ main source (src1)
       → none if no value has ever existed
 ```
 
-`this.state` exposes the sensor's previous state, effectively acting as persistent memory across updates and restarts. If all sources are temporarily unavailable, the sensor retains its last known value rather than producing an unknown state.
+`this.state` exposes the sensor's previous state, allowing the template to retain the last known value when sources temporarily disappear (requires Home Assistant state restoration to be active).
 
 On first boot, before any value has been recorded, the sensor honestly returns `none`.
 
