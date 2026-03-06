@@ -1,0 +1,42 @@
+template:
+
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.temperature_bedroom
+          - sensor.temperature_living_room
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: temperature_bedroom_level
+        state: &level_logic >
+          {% set room = this.entity_id
+             | replace('sensor.temperature_', '')
+             | replace('_level', '') %}
+
+          {% set t = states('sensor.temperature_' ~ room) | float(none) %}
+
+          {% if t is none %}
+          unknown
+          {% elif t < 18 %}
+          cold
+          {% elif t < 24 %}
+          ok
+          {% elif t < 27 %}
+          warm
+          {% else %}
+          hot
+          {% endif %}
+
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.temperature_bedroom
+          - sensor.temperature_living_room
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: temperature_living_room_level
+        state: *level_logic
