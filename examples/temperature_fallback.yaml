@@ -1,0 +1,98 @@
+template:
+
+  # ==========================================================
+  # Example — Self-parameterized temperature sensors
+  # ----------------------------------------------------------
+  # Goal:
+  #   Build consolidated temperature sensors without duplicating
+  #   the template logic for each room.
+  #
+  # Naming convention:
+  #   sensor.temperature_<room>_1  -> main source
+  #   sensor.temperature_<room>_2  -> fallback source
+  #   sensor.temperature_<room>    -> consolidated output
+  #
+  # Pattern:
+  #   The template derives its own source entities from
+  #   this.entity_id.
+  #
+  # Notes:
+  #   - Trigger-based template sensors are used here.
+  #   - The template logic is stored once in a YAML anchor.
+  #   - Each additional room reuses the same logic.
+  # ==========================================================
+
+  - trigger:
+      # ------------------------------------------------------
+      # Recompute when either bedroom source changes
+      # ------------------------------------------------------
+      - platform: state
+        entity_id:
+          - sensor.temperature_bedroom_1
+          - sensor.temperature_bedroom_2
+
+      # ------------------------------------------------------
+      # Recompute on Home Assistant startup
+      # ------------------------------------------------------
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: "Temperature Bedroom"
+        unique_id: temperature_bedroom
+        device_class: temperature
+        unit_of_measurement: "°C"
+
+        # ----------------------------------------------------
+        # Shared logic:
+        #   1. Derive room suffix from this sensor entity_id
+        #   2. Build source entity_ids dynamically
+        #   3. Read main source, fallback source, and last state
+        #   4. Return first valid value
+        #   5. Round to 1 decimal if a value exists
+        # ----------------------------------------------------
+        state: &temperature_logic >
+          {% set room = this.entity_id | replace('sensor.temperature_', '') %}
+
+          {% set src_main = 'sensor.temperature_' ~ room ~ '_1' %}
+          {% set src_fallback = 'sensor.temperature_' ~ room ~ '_2' %}
+
+          {% set value_main = states(src_main) | float(none) %}
+          {% set value_fallback = states(src_fallback) | float(none) %}
+          {% set value_last = this.state | float(none) %}
+
+          {% set chosen =
+            value_main
+            if value_main is not none
+            else value_fallback
+            if value_fallback is not none
+            else value_last
+          %}
+
+          {{ chosen | round(1) if chosen is not none else none }}
+
+  - trigger:
+      # ------------------------------------------------------
+      # Recompute when either living room source changes
+      # ------------------------------------------------------
+      - platform: state
+        entity_id:
+          - sensor.temperature_living_room_1
+          - sensor.temperature_living_room_2
+
+      # ------------------------------------------------------
+      # Recompute on Home Assistant startup
+      # ------------------------------------------------------
+      - platform: homeassistant
+        event: start
+
+    sensor:
+      - name: "Temperature Living Room"
+        unique_id: temperature_living_room
+        device_class: temperature
+        unit_of_measurement: "°C"
+
+        # ----------------------------------------------------
+        # Reuse the exact same logic via YAML anchor
+        # ----------------------------------------------------
+        state: *temperature_logic
