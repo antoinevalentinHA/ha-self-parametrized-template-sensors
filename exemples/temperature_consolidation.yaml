@@ -1,0 +1,63 @@
+# -------------------------------------------------------------------
+# Example — Self-parametrized temperature consolidation
+#
+# Pattern demonstrated:
+#   - YAML anchor to reuse template logic
+#   - `this.entity_id` introspection
+#   - main → fallback → last value chain
+#
+# Naming convention required:
+#
+#   sensor.temperature_<room>      consolidated sensor
+#   sensor.temperature_<room>_1    main source
+#   sensor.temperature_<room>_2    fallback source
+#
+# Example rooms in this file:
+#   bedroom
+#   living_room
+# -------------------------------------------------------------------
+
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.temperature_bedroom_1
+        - sensor.temperature_bedroom_2
+    - platform: homeassistant
+      event: start
+
+  sensor:
+    - name: Temperature Bedroom
+      unique_id: temperature_bedroom
+      device_class: temperature
+      unit_of_measurement: "°C"
+
+      state: &temperature_logic >
+        {% set suffix = this.entity_id | replace('sensor.temperature_', '') %}
+        {% set src1 = 'sensor.temperature_' ~ suffix ~ '_1' %}
+        {% set src2 = 'sensor.temperature_' ~ suffix ~ '_2' %}
+
+        {% set main = states(src1) | float(none) %}
+        {% set back = states(src2) | float(none) %}
+        {% set last = this.state | float(none) %}
+
+        {{ (main if main is not none
+            else back if back is not none
+            else last) | round(1)
+           if (main is not none or back is not none or last is not none)
+           else none }}
+
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.temperature_living_room_1
+        - sensor.temperature_living_room_2
+    - platform: homeassistant
+      event: start
+
+  sensor:
+    - name: Temperature Living Room
+      unique_id: temperature_living_room
+      device_class: temperature
+      unit_of_measurement: "°C"
+
+      state: *temperature_logic
