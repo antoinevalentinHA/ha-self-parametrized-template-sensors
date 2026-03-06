@@ -54,12 +54,12 @@ template:
         state: &temperature_logic >
           {% set room = this.entity_id | replace('sensor.temperature_', '') %}
 
-          {% set src_main = 'sensor.temperature_' ~ room ~ '_1' %}
+          {% set src_main     = 'sensor.temperature_' ~ room ~ '_1' %}
           {% set src_fallback = 'sensor.temperature_' ~ room ~ '_2' %}
 
-          {% set value_main = states(src_main) | float(none) %}
+          {% set value_main     = states(src_main)     | float(none) %}
           {% set value_fallback = states(src_fallback) | float(none) %}
-          {% set value_last = this.state | float(none) %}
+          {% set value_last     = this.state           | float(none) %}
 
           {% set chosen =
             value_main
