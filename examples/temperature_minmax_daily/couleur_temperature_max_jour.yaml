@@ -1,1 +1,128 @@
+# ==========================================================
+# Example — Self-parameterized template sensor
+#   Daily max temperature color classification
+#
+# Pattern demonstrated:
+#   this.entity_id → derive suffix → derive source sensors
+#
+# Expected entities:
+#   sensor.temperature_max_daily_<room>
+#   sensor.temperature_lower_threshold_<room>
+#   sensor.temperature_upper_threshold_<room>
+#
+# Output:
+#   sensor.color_temperature_max_daily_<room>
+#
+# Color scale (example):
+#   grey        → unavailable / invalid thresholds
+#   blue        → very cold
+#   light_blue  → cool
+#   green       → comfortable
+#   yellow      → warm
+#   red         → hot
+# ==========================================================
 
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.temperature_max_daily_room_1
+        - sensor.temperature_max_daily_room_2
+        - sensor.temperature_max_daily_room_3
+        - sensor.temperature_max_daily_room_4
+        - sensor.temperature_lower_threshold_room_1
+        - sensor.temperature_lower_threshold_room_2
+        - sensor.temperature_lower_threshold_room_3
+        - sensor.temperature_lower_threshold_room_4
+        - sensor.temperature_upper_threshold_room_1
+        - sensor.temperature_upper_threshold_room_2
+        - sensor.temperature_upper_threshold_room_3
+        - sensor.temperature_upper_threshold_room_4
+
+  sensor:
+
+    # ------------------------------------------------------
+    # COLOR LOGIC (anchor)
+    # ------------------------------------------------------
+
+    - name: "Color Temperature Max Daily Room 1"
+      unique_id: color_temperature_max_daily_room_1
+
+      state: &logic_color_max >
+        {% set prefix = 'sensor.color_temperature_max_daily_' %}
+        {% set suffix = this.entity_id | replace(prefix, '') %}
+
+        {% set src_temp = 'sensor.temperature_max_daily_' ~ suffix %}
+        {% set src_low  = 'sensor.temperature_lower_threshold_' ~ suffix %}
+        {% set src_high = 'sensor.temperature_upper_threshold_' ~ suffix %}
+
+        {% set raw = states(src_temp) %}
+        {% set t = raw | replace(',', '.') | float(999) %}
+
+        {% set low  = states(src_low)  | replace(',', '.') | float(0) %}
+        {% set high = states(src_high) | replace(',', '.') | float(0) %}
+
+        {% set center = (low + high) / 2 %}
+        {% set zone = 0.5 %}
+
+        {% if raw in ['unknown','unavailable',None] or t == 999 %}
+          grey
+        {% elif low == 0 or high == 0 or low >= high %}
+          grey
+        {% elif t < low %}
+          blue
+        {% elif t < center - zone %}
+          light_blue
+        {% elif t <= center + zone %}
+          green
+        {% elif t <= high %}
+          yellow
+        {% else %}
+          red
+        {% endif %}
+
+      attributes: &attrs_color_max
+        source_temperature: >
+          {% set prefix = 'sensor.color_temperature_max_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+          {{ 'sensor.temperature_max_daily_' ~ suffix }}
+
+        reason: >
+          {% set prefix = 'sensor.color_temperature_max_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+
+          {% set src = 'sensor.temperature_max_daily_' ~ suffix %}
+          {% set src_low = 'sensor.temperature_lower_threshold_' ~ suffix %}
+          {% set src_high = 'sensor.temperature_upper_threshold_' ~ suffix %}
+
+          {% set raw = states(src) %}
+          {% set t = raw | replace(',', '.') | float(999) %}
+
+          {% set low = states(src_low) | replace(',', '.') | float(0) %}
+          {% set high = states(src_high) | replace(',', '.') | float(0) %}
+
+          {% if raw in ['unknown','unavailable',None] or t == 999 %}
+            unavailable
+          {% elif low == 0 or high == 0 or low >= high %}
+            invalid_thresholds
+          {% else %}
+            ok
+          {% endif %}
+
+    # ------------------------------------------------------
+    # INSTANCES
+    # ------------------------------------------------------
+
+    - name: "Color Temperature Max Daily Room 2"
+      unique_id: color_temperature_max_daily_room_2
+      state: *logic_color_max
+      attributes: *attrs_color_max
+
+    - name: "Color Temperature Max Daily Room 3"
+      unique_id: color_temperature_max_daily_room_3
+      state: *logic_color_max
+      attributes: *attrs_color_max
+
+    - name: "Color Temperature Max Daily Room 4"
+      unique_id: color_temperature_max_daily_room_4
+      state: *logic_color_max
+      attributes: *attrs_color_max
