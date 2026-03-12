@@ -2,7 +2,7 @@
 
 This example demonstrates how **self-parameterized template sensors** can be used to build a complete sensor pipeline with minimal duplication.
 
-The entire system relies on a single convention:
+The entire system relies on a simple convention:
 ```
 <this.entity_id> → derive suffix → derive source entities
 ```
@@ -33,7 +33,8 @@ Each stage is generic and uses `this.entity_id` to determine which entities it s
 
 ## Naming convention
 
-All sensors in this example rely on a strict naming convention. The `<room>` suffix acts as the configuration key used by the templates.
+All sensors in this example rely on a strict naming convention.
+The `<room>` suffix acts as the configuration key used by the templates.
 
 | Entity | Purpose |
 |---|---|
@@ -52,7 +53,9 @@ sensor.temperature_min_daily_room_1
 sensor.temperature_max_daily_room_1
 sensor.temperature_lower_threshold_room_1
 sensor.temperature_upper_threshold_room_1
+
 sensor.temperature_minmax_daily_room_1
+
 sensor.color_temperature_min_daily_room_1
 sensor.color_temperature_max_daily_room_1
 sensor.color_temperature_minmax_daily_room_1
@@ -66,21 +69,27 @@ The templates derive the `<room>` suffix automatically from `this.entity_id`. Th
 
 ### `temperature_minmax_jour.yaml`
 
-Produces a compact display sensor for dashboards. Example output: `18.8 / 24.1 °C`
+Produces a compact **display sensor** intended for dashboards.
 
-Combines `sensor.temperature_min_daily_<room>` and `sensor.temperature_max_daily_<room>`. Does **not** implement any color or classification logic.
+Example output: `18.8 / 24.1 °C`
+
+It simply combines `sensor.temperature_min_daily_<room>` and `sensor.temperature_max_daily_<room>`. This sensor does **not** implement any color or classification logic.
 
 ### `couleur_temperature_min_jour.yaml`
 
-Classifies the daily minimum temperature using configurable thresholds from `sensor.temperature_lower_threshold_<room>` and `sensor.temperature_upper_threshold_<room>`. Output: `sensor.color_temperature_min_daily_<room>`.
+Classifies the **daily minimum temperature** using configurable thresholds from `sensor.temperature_lower_threshold_<room>` and `sensor.temperature_upper_threshold_<room>`.
+
+Output: `sensor.color_temperature_min_daily_<room>`
 
 ### `couleur_temperature_max_jour.yaml`
 
-Same classification logic applied to the daily maximum. Output: `sensor.color_temperature_max_daily_<room>`.
+Same classification logic applied to the **daily maximum temperature**.
+
+Output: `sensor.color_temperature_max_daily_<room>`
 
 ### `couleur_temperature_minmax_jour.yaml`
 
-Produces a synthetic color summarizing the daily range by combining both color sensors. Priority rule — worst condition wins:
+Produces a **synthetic color** summarizing the daily range by combining both color sensors. Priority rule — worst condition wins:
 ```
 grey → red → yellow → blue → light_blue → green
 ```
@@ -99,7 +108,7 @@ grey → red → yellow → blue → light_blue → green
 
 ## Scaling
 
-Adding a new room only requires two new instances:
+Adding a new room only requires two new entities:
 ```
 sensor.temperature_min_daily_room_5
 sensor.temperature_max_daily_room_5
