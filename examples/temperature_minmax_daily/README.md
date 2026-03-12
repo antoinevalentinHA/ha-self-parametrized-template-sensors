@@ -31,6 +31,37 @@ Each stage is generic and uses `this.entity_id` to determine which entities it s
 
 ---
 
+## Naming convention
+
+All sensors in this example rely on a strict naming convention. The `<room>` suffix acts as the configuration key used by the templates.
+
+| Entity | Purpose |
+|---|---|
+| `sensor.temperature_min_daily_<room>` | Daily minimum temperature |
+| `sensor.temperature_max_daily_<room>` | Daily maximum temperature |
+| `sensor.temperature_lower_threshold_<room>` | Lower comfort threshold |
+| `sensor.temperature_upper_threshold_<room>` | Upper comfort threshold |
+| `sensor.temperature_minmax_daily_<room>` | Display sensor (`min / max °C`) |
+| `sensor.color_temperature_min_daily_<room>` | Color classification of the minimum |
+| `sensor.color_temperature_max_daily_<room>` | Color classification of the maximum |
+| `sensor.color_temperature_minmax_daily_<room>` | Synthetic color summarizing the daily range |
+
+### Example for `room_1`
+```
+sensor.temperature_min_daily_room_1
+sensor.temperature_max_daily_room_1
+sensor.temperature_lower_threshold_room_1
+sensor.temperature_upper_threshold_room_1
+sensor.temperature_minmax_daily_room_1
+sensor.color_temperature_min_daily_room_1
+sensor.color_temperature_max_daily_room_1
+sensor.color_temperature_minmax_daily_room_1
+```
+
+The templates derive the `<room>` suffix automatically from `this.entity_id`. The suffix can represent any logical area — the templates never reference room names directly.
+
+---
+
 ## Files
 
 ### `temperature_minmax_jour.yaml`
