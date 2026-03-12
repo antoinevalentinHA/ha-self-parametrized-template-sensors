@@ -1,1 +1,98 @@
+# ==========================================================
+# Example — Self-parameterized template sensor
+#   Daily min/max temperature color synthesis
+#
+# Pattern demonstrated:
+#   this.entity_id → derive suffix → derive source sensors
+#
+# Expected entities:
+#   sensor.color_temperature_min_daily_<room>
+#   sensor.color_temperature_max_daily_<room>
+#
+# Output:
+#   sensor.color_temperature_minmax_daily_<room>
+#
+# Color priority (worst condition wins):
+#   grey
+#   red
+#   yellow
+#   blue
+#   light_blue
+#   green
+#
+# This example demonstrates how a generic template sensor
+# can synthesize two other generic sensors using only
+# naming conventions and this.entity_id.
+# ==========================================================
 
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.color_temperature_min_daily_room_1
+        - sensor.color_temperature_min_daily_room_2
+        - sensor.color_temperature_min_daily_room_3
+        - sensor.color_temperature_min_daily_room_4
+        - sensor.color_temperature_max_daily_room_1
+        - sensor.color_temperature_max_daily_room_2
+        - sensor.color_temperature_max_daily_room_3
+        - sensor.color_temperature_max_daily_room_4
+
+  sensor:
+
+    # ------------------------------------------------------
+    # COLOR SYNTHESIS LOGIC (anchor)
+    # ------------------------------------------------------
+
+    - name: "Color Temperature MinMax Daily Room 1"
+      unique_id: color_temperature_minmax_daily_room_1
+
+      state: &logic_color_minmax >
+        {% set prefix = 'sensor.color_temperature_minmax_daily_' %}
+        {% set suffix = this.entity_id | replace(prefix, '') %}
+
+        {% set c_min = states('sensor.color_temperature_min_daily_' ~ suffix) %}
+        {% set c_max = states('sensor.color_temperature_max_daily_' ~ suffix) %}
+
+        {% if c_min == 'grey' or c_max == 'grey' %}
+          grey
+        {% elif c_min == 'red' or c_max == 'red' %}
+          red
+        {% elif c_min == 'yellow' or c_max == 'yellow' %}
+          yellow
+        {% elif c_min == 'blue' or c_max == 'blue' %}
+          blue
+        {% elif c_min == 'light_blue' or c_max == 'light_blue' %}
+          light_blue
+        {% else %}
+          green
+        {% endif %}
+
+      attributes: &attrs_color_minmax
+        color_min: >
+          {% set prefix = 'sensor.color_temperature_minmax_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+          {{ states('sensor.color_temperature_min_daily_' ~ suffix) }}
+
+        color_max: >
+          {% set prefix = 'sensor.color_temperature_minmax_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+          {{ states('sensor.color_temperature_max_daily_' ~ suffix) }}
+
+    # ------------------------------------------------------
+    # INSTANCES
+    # ------------------------------------------------------
+
+    - name: "Color Temperature MinMax Daily Room 2"
+      unique_id: color_temperature_minmax_daily_room_2
+      state: *logic_color_minmax
+      attributes: *attrs_color_minmax
+
+    - name: "Color Temperature MinMax Daily Room 3"
+      unique_id: color_temperature_minmax_daily_room_3
+      state: *logic_color_minmax
+      attributes: *attrs_color_minmax
+
+    - name: "Color Temperature MinMax Daily Room 4"
+      unique_id: color_temperature_minmax_daily_room_4
+      state: *logic_color_minmax
+      attributes: *attrs_color_minmax
