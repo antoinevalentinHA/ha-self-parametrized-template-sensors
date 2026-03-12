@@ -22,7 +22,6 @@ This allows a template sensor to **configure itself from its own entity name**.
 ## The Problem
 
 Many Home Assistant configurations duplicate the same template logic per room or device.
-
 ```yaml
 sensor:
   - name: temperature_bedroom
@@ -59,7 +58,6 @@ In short:
 This effectively turns the entity naming convention into configuration.
 
 ### Pattern overview
-
 ```
 sensor.temperature_bedroom
             │
@@ -74,7 +72,6 @@ classification logic runs — same template, any room
 ```
 
 ### Minimal example
-
 ```yaml
 sensor:
   - name: temperature_bedroom_level
@@ -96,22 +93,12 @@ Two sensors. One template. Zero duplication.
 ### Conceptual example
 
 Suppose we define the following naming convention:
-
 ```
 sensor.temperature_<room>        ← source
 sensor.temperature_<room>_level  ← derived sensor
 ```
 
-The `*_level` sensor classifies the temperature of its corresponding room. Instead of writing one template per room:
-
-```
-sensor.temperature_bedroom_level
-sensor.temperature_living_room_level
-sensor.temperature_office_level
-```
-
-the template derives the source entity automatically:
-
+The `*_level` sensor classifies the temperature of its corresponding room. Instead of writing one template per room, the template derives the source entity automatically:
 ```jinja2
 {% set room = this.entity_id | replace('sensor.temperature_', '') | replace('_level', '') %}
 {% set t = states('sensor.temperature_' ~ room) | float(none) %}
@@ -145,14 +132,12 @@ One anchor, any number of rooms or devices.
 ## Example
 
 The pattern works by deriving the source sensors from the entity name itself. Each consolidated sensor automatically resolves its own source sensors using the naming convention.
-
 ```
 sensor.temperature_<room>_1   (main source)
 sensor.temperature_<room>_2   (fallback source)
              ↓
 sensor.temperature_<room>     (consolidated output)
 ```
-
 ```yaml
 - trigger:
     - platform: state
@@ -205,7 +190,6 @@ The logic is written **once**. The YAML anchor (`&temperature_logic`) stores the
 ## Fallback Chain
 
 The template implements a three-level fallback:
-
 ```
 main source (src1)
   → fallback source (src2) if main is unavailable
@@ -240,7 +224,6 @@ This pattern trades duplication for naming discipline.
 The same approach applies to any repeated sensor logic.
 
 Example: a color classification sensor derived from temperature + thresholds:
-
 ```
 sensor.color_temperature_<room>
   → reads sensor.temperature_<room>
@@ -249,6 +232,59 @@ sensor.color_temperature_<room>
 ```
 
 One anchor, any number of rooms.
+
+---
+
+## Examples
+
+This repository includes several progressively more advanced examples of the pattern.
+
+### Basic classification
+```
+examples/temperature_classification.yaml
+```
+
+A minimal example showing how a sensor can classify a temperature value using `this.entity_id` to automatically derive its source sensor.
+
+### Consolidation with fallback
+```
+examples/temperature_consolidation.yaml
+examples/temperature_fallback.yaml
+```
+
+These examples demonstrate how a sensor can consolidate multiple sources using a fallback chain:
+```
+main source
+  → fallback source
+    → last known state
+```
+
+The sensor derives its dependencies automatically from its own entity name.
+
+### Advanced pipeline example
+```
+examples/temperature_minmax_daily/
+```
+
+A complete example demonstrating how **self-parameterized sensors can form a full sensor pipeline**.
+```
+temperature_min_daily_room_X
+temperature_max_daily_room_X
+        │
+        ▼
+temperature_minmax_daily_room_X
+        │
+        ▼
+color_temperature_min_daily_room_X
+color_temperature_max_daily_room_X
+        │
+        ▼
+color_temperature_minmax_daily_room_X
+```
+
+This example shows how one template logic can power an entire **family of sensors**, naming conventions act as **implicit configuration**, and backend sensors can be composed into **multi-stage pipelines**.
+
+See `examples/temperature_minmax_daily/README.md` for full details.
 
 ---
 
