@@ -1,1 +1,101 @@
+# ==========================================================
+# Example — Self-parameterized template sensor
+#   Daily min/max temperature display sensor
+#
+# Pattern demonstrated:
+#   this.entity_id → derive suffix → derive source sensors
+#
+# Expected entities:
+#   sensor.temperature_min_daily_<room>
+#   sensor.temperature_max_daily_<room>
+#
+# Output:
+#   sensor.temperature_minmax_daily_<room>
+#
+# Example output:
+#   "18.8 / 24.1 °C"
+#
+# This sensor is designed for dashboards: it provides a
+# compact textual representation of the daily temperature
+# range while leaving color logic to backend color sensors.
+# ==========================================================
 
+- trigger:
+    - platform: state
+      entity_id:
+        - sensor.temperature_min_daily_room_1
+        - sensor.temperature_max_daily_room_1
+        - sensor.temperature_min_daily_room_2
+        - sensor.temperature_max_daily_room_2
+        - sensor.temperature_min_daily_room_3
+        - sensor.temperature_max_daily_room_3
+        - sensor.temperature_min_daily_room_4
+        - sensor.temperature_max_daily_room_4
+
+    - platform: homeassistant
+      event: start
+
+  sensor:
+
+    # ------------------------------------------------------
+    # DISPLAY LOGIC (anchor)
+    # ------------------------------------------------------
+
+    - name: "Temperature MinMax Daily Room 1"
+      unique_id: temperature_minmax_daily_room_1
+
+      state: &logic_minmax_display >
+        {% set prefix = 'sensor.temperature_minmax_daily_' %}
+        {% set suffix = this.entity_id | replace(prefix, '') %}
+
+        {% set src_min = 'sensor.temperature_min_daily_' ~ suffix %}
+        {% set src_max = 'sensor.temperature_max_daily_' ~ suffix %}
+
+        {% set min_raw = states(src_min) %}
+        {% set max_raw = states(src_max) %}
+
+        {% if min_raw in ['unknown','unavailable',None]
+           or max_raw in ['unknown','unavailable',None] %}
+          unknown
+        {% else %}
+
+          {% set min = min_raw | replace(',', '.') | float(999) %}
+          {% set max = max_raw | replace(',', '.') | float(999) %}
+
+          {% if min == 999 or max == 999 %}
+            unknown
+          {% else %}
+            {{ "%.1f"|format(min) }} / {{ "%.1f"|format(max) }} °C
+          {% endif %}
+
+        {% endif %}
+
+      attributes: &attrs_minmax_display
+        source_min: >
+          {% set prefix = 'sensor.temperature_minmax_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+          {{ 'sensor.temperature_min_daily_' ~ suffix }}
+
+        source_max: >
+          {% set prefix = 'sensor.temperature_minmax_daily_' %}
+          {% set suffix = this.entity_id | replace(prefix, '') %}
+          {{ 'sensor.temperature_max_daily_' ~ suffix }}
+
+    # ------------------------------------------------------
+    # INSTANCES
+    # ------------------------------------------------------
+
+    - name: "Temperature MinMax Daily Room 2"
+      unique_id: temperature_minmax_daily_room_2
+      state: *logic_minmax_display
+      attributes: *attrs_minmax_display
+
+    - name: "Temperature MinMax Daily Room 3"
+      unique_id: temperature_minmax_daily_room_3
+      state: *logic_minmax_display
+      attributes: *attrs_minmax_display
+
+    - name: "Temperature MinMax Daily Room 4"
+      unique_id: temperature_minmax_daily_room_4
+      state: *logic_minmax_display
+      attributes: *attrs_minmax_display
